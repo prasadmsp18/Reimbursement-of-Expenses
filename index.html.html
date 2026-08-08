@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reimbursement of Expenses — Way.com Inc</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<!--
+  ============================================================================
+  PROTOTYPE ONLY — NOT AN AUTHENTICATION SYSTEM.
+
+  The credential check below runs in the browser. Anyone can read it from
+  view-source. It exists so the two screens can be demonstrated in sequence,
+  nothing more. Do not put a real password here, and do not ship this gate.
+
+  Production path: Entra ID via MSAL.js (authorization code + PKCE). No
+  password ever reaches this page, and MFA plus conditional access are
+  inherited from the tenant. See notes at the bottom of this file.
+  ============================================================================
+-->
+
+<style>
+:root{
+  --paper:#FBFBF9; --surface:#FFFFFF; --ink:#1C1F1E; --ink-2:#565B57; --ink-3:#8A8E88;
+  --rule:#E2E3DC; --rule-strong:#C9CBC2;
+  --pine:#17564A; --pine-soft:#EAF1EE; --pine-line:#B9D2C9;
+  --ochre:#A35A12; --ochre-soft:#FBF1E3; --ochre-line:#E8CFA6;
+  --alert:#8F2C24; --alert-soft:#FBECEA;
+  --sans:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,'Cascadia Mono',Consolas,monospace;
+}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;min-height:100%}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.req{color:var(--alert)}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+input[type=text],input[type=email],input[type=password],input[type=date],input[type=number],select,textarea{
+  font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--surface);
+  border:1px solid var(--rule-strong);border-radius:6px;padding:9px 11px;width:100%;transition:border-color .12s,box-shadow .12s}
+input[type=number],input[type=date]{font-family:var(--mono);font-variant-numeric:tabular-nums}
+textarea{resize:vertical;min-height:74px;line-height:1.5}
+input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;border-color:var(--pine);box-shadow:0 0 0 3px var(--pine-soft)}
+input[readonly]{background:#F4F5F1;color:var(--ink-2);cursor:not-allowed}
+.locked{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-left:6px}
+.micro{font-size:12px;color:var(--ink-3);margin:3px 0 0;line-height:1.45}
+
+.btn{font-family:var(--sans);font-size:14px;font-weight:500;border-radius:6px;cursor:pointer;transition:background .12s,border-color .12s}
+.btn:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
+.btn-primary{background:var(--pine);color:#fff;border:1px solid var(--pine);padding:11px 20px;width:100%}
+.btn-primary:hover:not(:disabled){background:#0F4438}
+.btn-primary:disabled{background:#B7BDB8;border-color:#B7BDB8;cursor:not-allowed}
+.btn-ghost{background:transparent;color:var(--pine);border:1px dashed var(--pine-line);padding:10px 16px;width:100%}
+.btn-ghost:hover{background:var(--pine-soft)}
+.btn-ms{background:var(--surface);color:var(--ink);border:1px solid var(--rule-strong);padding:11px 20px;width:100%;
+  display:flex;align-items:center;justify-content:center;gap:10px}
+.btn-ms:hover{border-color:var(--ink-3);background:#F7F8F5}
+.btn-remove{background:none;border:none;color:var(--ink-3);font-size:13px;cursor:pointer;padding:2px 4px;text-decoration:underline;text-underline-offset:2px}
+.btn-remove:hover{color:var(--alert)}
+
+.flag{display:flex;gap:9px;align-items:flex-start;font-size:13px;padding:9px 11px;border-radius:6px;margin-top:9px;line-height:1.45}
+.flag-warn{background:var(--ochre-soft);border:1px solid var(--ochre-line);color:#6E3C0B}
+.flag-err{background:var(--alert-soft);border:1px solid #E8C4C0;color:#6E211B}
+.flag-mark{font-family:var(--mono);font-weight:500;flex-shrink:0}
+
+/* ---------- Screen 1 : sign in ---------- */
+.gate{min-height:100vh;display:grid;grid-template-columns:1fr 1fr}
+@media(max-width:820px){.gate{grid-template-columns:1fr}}
+.gate-brand{background:var(--pine);color:#fff;padding:48px 44px;display:flex;flex-direction:column;justify-content:flex-start}
+@media(max-width:820px){.gate-brand{padding:32px 24px;min-height:auto}}
+.gate-brand .brandmark{font-family:var(--sans);font-size:30px;font-weight:600;letter-spacing:-.02em;line-height:1.18;color:#FF4F3F}
+.gate-brand h1{font-size:30px;line-height:1.18;font-weight:600;letter-spacing:-.02em;margin:14px 0 0;max-width:14ch}
+@media(max-width:820px){.gate-brand h1{font-size:24px;max-width:none}.gate-brand .brandmark{font-size:24px}}
+.gate-brand .lede{font-size:12.5px;color:#A8C8BE;margin-top:12px;max-width:44ch;line-height:1.55}
+
+.gate-form{display:flex;align-items:center;justify-content:center;padding:48px 24px}
+.gate-card{width:100%;max-width:380px}
+.gate-card h2{font-size:22px;font-weight:600;letter-spacing:-.015em;margin:6px 0 4px}
+.gate-card .sub{font-size:14px;color:var(--ink-2);margin:0 0 26px}
+.gfield{margin-bottom:15px}
+.gfield label{display:block;font-size:13px;font-weight:500;color:var(--ink-2);margin-bottom:5px}
+.pw-wrap{position:relative}
+.pw-wrap input{padding-right:62px}
+.pw-toggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;
+  font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);cursor:pointer;padding:6px 8px}
+.pw-toggle:hover{color:var(--pine)}
+
+.divider{display:flex;align-items:center;gap:12px;margin:22px 0;color:var(--ink-3);font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+.divider::before,.divider::after{content:"";height:1px;background:var(--rule);flex:1}
+
+.demo-note{margin-top:26px;border:1px solid var(--ochre-line);background:var(--ochre-soft);border-radius:8px;padding:13px 15px}
+.demo-note .eyebrow{color:var(--ochre)}
+.demo-note p{margin:7px 0 0;font-size:12.5px;color:#6E3C0B;line-height:1.55}
+.demo-note code{font-family:var(--mono);font-size:12px;background:#F6E4C8;padding:1px 5px;border-radius:3px}
+
+/* ---------- Screen 2 : claim form ---------- */
+.masthead{border-bottom:1px solid var(--rule);background:var(--surface)}
+.masthead-in{max-width:1120px;margin:0 auto;padding:20px 24px;display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between}
+.masthead h1{margin:0;font-size:21px;font-weight:600;letter-spacing:-.015em}
+.whoami{display:flex;align-items:center;gap:11px;font-size:13px;color:var(--ink-2)}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--pine-soft);border:1px solid var(--pine-line);
+  color:var(--pine);font-family:var(--mono);font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+.shell{max-width:1120px;margin:0 auto;padding:28px 24px 96px;display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:36px;align-items:start}
+@media(max-width:900px){.shell{grid-template-columns:minmax(0,1fr);gap:24px;padding-bottom:32px}}
+
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:10px;margin-bottom:20px}
+.panel-hd{padding:16px 20px 14px;border-bottom:1px solid var(--rule)}
+.panel-hd h2{margin:5px 0 0;font-size:16px;font-weight:600;letter-spacing:-.01em}
+.panel-hd .hint{margin:3px 0 0;font-size:13px;color:var(--ink-2)}
+.panel-bd{padding:18px 20px}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px}
+@media(max-width:560px){.grid2{grid-template-columns:1fr}}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field > label{font-size:13px;font-weight:500;color:var(--ink-2)}
+
+.line{border:1px solid var(--rule);border-radius:8px;padding:14px;margin-bottom:12px;background:var(--paper)}
+.line-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.line-no{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.line-grid{display:grid;grid-template-columns:150px 1fr 150px;gap:12px 14px}
+@media(max-width:680px){.line-grid{grid-template-columns:1fr}}
+.line-wide{grid-column:1/-1}
+
+.drop{border:1px dashed var(--rule-strong);border-radius:6px;padding:11px;background:var(--surface);font-size:13px;color:var(--ink-2)}
+.drop input{font-size:13px;width:100%}
+.file-note{font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-top:5px}
+
+.declare{display:flex;gap:11px;align-items:flex-start;padding:14px;border:1px solid var(--rule-strong);border-radius:8px;background:var(--paper)}
+.declare input{margin:3px 0 0;width:16px;height:16px;accent-color:var(--pine);flex-shrink:0}
+.declare label{font-size:13.5px;color:var(--ink-2);line-height:1.5}
+
+.rail{position:sticky;top:20px}
+@media(max-width:900px){.rail{position:static}}
+.tally{background:var(--surface);border:1px solid var(--rule);border-radius:10px;overflow:hidden}
+.tally-total{padding:18px 20px;border-bottom:1px solid var(--rule)}
+.tally-total .amt{font-family:var(--mono);font-size:31px;font-weight:500;letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin-top:5px;display:block}
+.tally-total .sub{font-family:var(--mono);font-size:11.5px;color:var(--ink-3);margin-top:3px}
+
+.breakdown{padding:12px 20px;border-bottom:1px solid var(--rule)}
+.brow{display:flex;justify-content:space-between;gap:12px;font-size:13px;padding:3px 0;color:var(--ink-2)}
+.brow span:last-child{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink)}
+.brow-empty{font-size:13px;color:var(--ink-3);font-style:italic}
+
+.route{padding:16px 20px}
+.stop{display:grid;grid-template-columns:22px 1fr;gap:11px;align-items:start;padding-bottom:15px;position:relative}
+.stop:last-child{padding-bottom:0}
+.stop::before{content:"";position:absolute;left:10px;top:19px;bottom:-1px;width:1px;background:var(--rule-strong)}
+.stop:last-child::before{display:none}
+.pip{width:21px;height:21px;border-radius:50%;border:1px solid var(--rule-strong);background:var(--surface);
+  font-family:var(--mono);font-size:10px;display:flex;align-items:center;justify-content:center;color:var(--ink-3);z-index:1}
+.pip-on{background:var(--pine-soft);border-color:var(--pine-line);color:var(--pine)}
+.pip-new{background:var(--ochre-soft);border-color:var(--ochre-line);color:var(--ochre)}
+.stop-t{font-size:13.5px;font-weight:500;line-height:1.35}
+.stop-s{font-size:12px;color:var(--ink-3);margin-top:1px;line-height:1.4}
+.badge{display:inline-block;font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;
+  padding:1px 6px;border-radius:3px;background:var(--ochre-soft);color:var(--ochre);border:1px solid var(--ochre-line);margin-left:6px;vertical-align:1px}
+.stop-off .stop-t,.stop-off .stop-s{color:var(--ink-3);font-weight:400}
+
+.submit-wrap{padding:16px 20px;border-top:1px solid var(--rule);background:var(--paper)}
+.blockers{margin:0 0 11px;padding:0;list-style:none}
+.blockers li{font-size:12.5px;color:var(--alert);padding-left:15px;position:relative;line-height:1.45;margin-bottom:3px}
+.blockers li::before{content:"—";position:absolute;left:0;font-family:var(--mono)}
+
+.payload{margin-top:20px;background:var(--surface);border:1px solid var(--rule);border-radius:10px}
+.payload pre{margin:0;padding:16px 18px;font-family:var(--mono);font-size:11.5px;line-height:1.65;
+  color:var(--ink-2);overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+
+.stats{border-bottom:1px solid var(--rule);background:var(--surface)}
+.stats-in{max-width:1120px;margin:0 auto;padding:0 24px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
+.stat{padding:13px 14px 14px;border-left:1px solid var(--rule);text-align:left;background:none;font:inherit;cursor:pointer;width:100%;transition:background .12s}
+.stat:first-child{border-left:none}
+.stat:hover{background:var(--paper)}
+.stat[aria-pressed="true"]{background:var(--pine-soft)}
+.stat:focus-visible{outline:2px solid var(--pine);outline-offset:-2px}
+.stat-l{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);display:flex;align-items:center;gap:5px}
+.stat-l i{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.stat-n{font-family:var(--mono);font-size:22px;font-weight:500;font-variant-numeric:tabular-nums;line-height:1.15;margin-top:4px}
+.stat-v{font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-top:1px}
+@media(max-width:760px){.stats-in{grid-template-columns:repeat(2,minmax(0,1fr));padding:0}.stat{border-left:1px solid var(--rule);border-top:1px solid var(--rule)}}
+.acts{white-space:nowrap}
+.lnk{background:none;border:none;font:inherit;font-size:12.5px;color:var(--pine);cursor:pointer;padding:2px 0;text-decoration:underline;text-underline-offset:2px}
+.lnk+.lnk{margin-left:13px}
+.lnk-danger{color:var(--alert)}
+.lnk:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
+.locknote{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);cursor:help}
+.confirm{font-size:12.5px;color:var(--alert);white-space:nowrap}
+.listwrap{max-width:1120px;margin:0 auto;padding:20px 24px 0}
+.listwrap details{background:var(--surface);border:1px solid var(--rule);border-radius:10px}
+.sheet{max-width:780px;margin:0 auto;padding:28px 24px 80px}
+.refno{font-family:var(--mono);font-size:23px;font-weight:500;letter-spacing:-.01em;margin-top:4px}
+.pill{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase;padding:5px 12px;border-radius:999px;border:1px solid;white-space:nowrap}
+.pill-now{background:var(--ochre-soft);border-color:var(--ochre-line);color:var(--ochre)}
+.pill-done{background:var(--pine-soft);border-color:var(--pine-line);color:var(--pine)}
+.pill-stop{background:var(--alert-soft);border-color:#E8C4C0;color:var(--alert)}
+.pill-wait{background:#F1F2ED;border-color:var(--rule-strong);color:var(--ink-3)}
+.pip-done{background:var(--pine);border-color:var(--pine);color:#fff}
+.pip-stop{background:var(--alert-soft);border-color:#E8C4C0;color:var(--alert)}
+.stage-when{font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-top:2px}
+.sumtable{width:100%;border-collapse:collapse;font-size:13.5px}
+.sumtable th{text-align:left;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:400;padding:0 0 9px;border-bottom:1px solid var(--rule)}
+.sumtable td{padding:12px 0;border-bottom:1px solid var(--rule);vertical-align:top}
+.sumtable td+td,.sumtable th+th{padding-left:14px}
+.sumtable .num{font-family:var(--mono);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.sumtable tfoot td{border-bottom:none;font-weight:500;padding-top:14px;font-size:15px}
+.kv{display:grid;grid-template-columns:170px minmax(0,1fr);gap:11px 18px;font-size:13.5px;margin:0}
+@media(max-width:520px){.kv{grid-template-columns:1fr;gap:2px 0}.kv dd{margin-bottom:10px}}
+.kv dt{color:var(--ink-2)}
+.kv dd{margin:0;word-break:break-word}
+.rcpt{font-family:var(--mono);font-size:11.5px;color:var(--ink-3);margin-top:3px;word-break:break-all}
+.dsum{padding:14px 20px;cursor:pointer;font-size:13.5px;font-weight:500;list-style:none}
+.dsum::-webkit-details-marker{display:none}
+.dsum::before{content:"› ";color:var(--ink-3);font-family:var(--mono)}
+details[open] .dsum::before{content:"⌄ "}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ======================= SCREEN 1 ======================= -->
+<div class="gate" id="screenSignIn">
+  <div class="gate-brand">
+    <div>
+      <div class="brandmark">Way.com Inc</div>
+      <h1>Reimbursement of Expenses</h1>
+      <p class="lede">File a claim, track where it sits, and get paid on the next payroll run.</p>
+    </div>
+  </div>
+
+  <div class="gate-form">
+    <div class="gate-card">
+      <div class="eyebrow">Step 1 of 2</div>
+      <h2>Sign in</h2>
+      <p class="sub">Use your Way.com account.</p>
+
+      <div class="gfield">
+        <label for="email">Email address</label>
+        <input type="email" id="email" autocomplete="username" value="Prasad.msp@way.com"
+               placeholder="name@way.com" onkeydown="if(event.key==='Enter')signIn()">
+      </div>
+
+      <div class="gfield">
+        <label for="password">Password</label>
+        <div class="pw-wrap">
+          <input type="password" id="password" autocomplete="current-password"
+                 placeholder="Enter your password" onkeydown="if(event.key==='Enter')signIn()">
+          <button type="button" class="pw-toggle" onclick="togglePw()" id="pwToggle" aria-label="Show password">Show</button>
+        </div>
+      </div>
+
+      <div id="signInError"></div>
+
+      <div style="margin-top:20px">
+        <button type="button" class="btn btn-primary" onclick="signIn()">Sign in</button>
+      </div>
+
+      <div class="divider">or</div>
+
+      <button type="button" class="btn btn-ms" onclick="ssoStub()">
+        <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true">
+          <rect x="0" y="0" width="7" height="7" fill="#F25022"/>
+          <rect x="9" y="0" width="7" height="7" fill="#7FBA00"/>
+          <rect x="0" y="9" width="7" height="7" fill="#00A4EF"/>
+          <rect x="9" y="9" width="7" height="7" fill="#FFB900"/>
+        </svg>
+        Sign in with Microsoft
+      </button>
+
+      <div class="demo-note">
+        <div class="eyebrow">Prototype</div>
+        <p>This screen checks credentials in the browser, so it is a demo gate rather than real security. Sign in with <code>Prasad.msp@way.com</code> and <code>WayDemo#2026</code>. Replace the whole gate with Entra ID before this goes anywhere near a user.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= SCREEN 2 ======================= -->
+<div id="screenClaim" hidden>
+  <header class="masthead">
+    <div class="masthead-in">
+      <div>
+        <div class="eyebrow">Way.com Inc · Finance</div>
+        <h1>Reimbursement of Expenses</h1>
+      </div>
+      <div class="whoami">
+        <div class="avatar" id="avatar">PN</div>
+        <div>
+          <div style="color:var(--ink);font-weight:500" id="whoName">Prasad M S</div>
+          <div style="font-family:var(--mono);font-size:11.5px" id="whoMail">Prasad.msp@way.com</div>
+        </div>
+        <button type="button" class="btn-remove" onclick="signOut()" style="margin-left:8px">Sign out</button>
+      </div>
+    </div>
+  </header>
+
+<div class="stats"><div class="stats-in statsHost"></div></div>
+<div class="listwrap"><details class="listHost">
+  <summary class="dsum">My reimbursement claims</summary>
+  <div style="padding:0 20px 18px;overflow-x:auto"><table class="sumtable listTable"></table></div>
+</details></div>
+
+  <div class="shell">
+    <main>
+      <div id="editBanner" hidden></div>
+      <section class="panel">
+        <div class="panel-hd">
+          <div class="eyebrow">Section 01</div>
+          <h2>Claimant</h2>
+          <p class="hint">Read from your sign-in. Contact HR if anything here is wrong.</p>
+        </div>
+        <div class="panel-bd">
+          <div class="grid2">
+            <div class="field">
+              <label for="empName">Name<span class="locked">from sign-in</span></label>
+              <input type="text" id="empName" value="Prasad M S" readonly>
+            </div>
+            <div class="field">
+              <label for="empId">Employee number <span class="req">*</span></label>
+              <input type="text" id="empId" value="WE-4471" placeholder="WE-0000" oninput="recalc()">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-hd">
+          <div class="eyebrow">Section 02</div>
+          <h2>Approval request</h2>
+          <p class="hint">Goes to your manager from the directory. Finance is copied on every claim.</p>
+        </div>
+        <div class="panel-bd">
+          <div class="field" style="margin-bottom:14px">
+            <label for="mailTo">To <span class="req">*</span></label>
+            <input type="text" id="mailTo" value="arun.krishnan@way.com" placeholder="manager@way.com" oninput="recalc()">
+            <p class="micro">Prefilled from the directory. Change it if your approver is someone else.</p>
+            <div id="toFlags"></div>
+          </div>
+          <div class="field" style="margin-bottom:14px">
+            <label for="mailCc">Cc</label>
+            <input type="text" id="mailCc" value="Finance@way.com" placeholder="name@way.com, second@way.com" oninput="recalc()">
+            <p class="micro">Separate addresses with commas. Finance is prefilled and expected on every claim.</p>
+            <div id="ccFlags"></div>
+          </div>
+          <div class="field">
+            <label for="mailSubject">Subject<span class="locked">generated</span></label>
+            <input type="text" id="mailSubject" readonly>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-hd">
+          <div class="eyebrow">Section 03</div>
+          <h2>What was this for</h2>
+        </div>
+        <div class="panel-bd">
+          <div class="grid2" style="margin-bottom:14px">
+            <div class="field">
+              <label for="expenseHead">Head of expenses <span class="req">*</span></label>
+              <select id="expenseHead" onchange="recalc()">
+                <option value="">Choose one</option>
+                <option>Travel expenses</option>
+                <option>Office expenses</option>
+                <option>Staff welfare</option>
+                <option>Telephone and internet charges</option>
+                <option>Other expenses</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="currency">Currency</label>
+              <select id="currency" onchange="recalc()">
+                <option value="INR">INR — Indian rupee</option>
+                <option value="USD">USD — US dollar</option>
+                <option value="GBP">GBP — Pound sterling</option>
+                <option value="EUR">EUR — Euro</option>
+              </select>
+            </div>
+          </div>
+          <div class="field" style="margin-bottom:14px">
+            <label for="title">Claim title <span class="req">*</span></label>
+            <input type="text" id="title" placeholder="Client visit — Chennai, March" oninput="recalc()">
+          </div>
+          <div class="field">
+            <label for="reason">Business justification <span class="req">*</span></label>
+            <textarea id="reason" placeholder="Why the spend was necessary. Your approvers read this first." oninput="recalc()"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-hd">
+          <div class="eyebrow">Section 04</div>
+          <h2>Expense lines</h2>
+          <p class="hint">Add a line per receipt, and attach the receipt to each one. Keep a hotel, a taxi and a meal separate — finance codes them differently.</p>
+        </div>
+        <div class="panel-bd">
+          <div id="lines"></div>
+          <button type="button" class="btn btn-ghost" onclick="addLine()">Add another line</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-bd">
+          <div class="declare">
+            <input type="checkbox" id="declare" onchange="recalc()">
+            <label for="declare">I confirm these expenses were incurred wholly for business purposes, are within the company travel and expense policy, and have not been claimed before or reimbursed by any other party.</label>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <aside class="rail">
+      <div class="tally">
+        <div class="tally-total">
+          <div class="eyebrow">Claim total</div>
+          <span class="amt" id="total" aria-live="polite">₹0.00</span>
+          <div class="sub" id="lineCount">0 lines</div>
+        </div>
+        <div class="breakdown" id="breakdown"></div>
+        <div class="route">
+          <div class="eyebrow" style="margin-bottom:12px">Approval route</div>
+          <div id="routeStops"></div>
+        </div>
+        <div class="submit-wrap">
+          <ul class="blockers" id="blockers"></ul>
+          <button type="button" class="btn btn-primary" id="submitBtn" onclick="submitClaim()" disabled>Send for approval</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- ======================= SCREEN 3 ======================= -->
+<div id="screenSummary" hidden>
+  <header class="masthead">
+    <div class="masthead-in">
+      <div>
+        <div class="eyebrow">Way.com Inc · Finance</div>
+        <h1>Claim submitted</h1>
+      </div>
+      <div class="whoami">
+        <div class="avatar">PN</div>
+        <div>
+          <div style="color:var(--ink);font-weight:500">Prasad M S</div>
+          <div style="font-family:var(--mono);font-size:11.5px">Prasad.msp@way.com</div>
+        </div>
+        <button type="button" class="btn-remove" onclick="signOut()" style="margin-left:8px">Sign out</button>
+      </div>
+    </div>
+  </header>
+
+<div class="stats"><div class="stats-in statsHost"></div></div>
+<div class="listwrap"><details class="listHost">
+  <summary class="dsum">My reimbursement claims</summary>
+  <div style="padding:0 20px 18px;overflow-x:auto"><table class="sumtable listTable"></table></div>
+</details></div>
+
+  <div class="sheet">
+    <section class="panel">
+      <div class="panel-bd" style="display:flex;flex-wrap:wrap;gap:18px;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div class="eyebrow">Claim reference</div>
+          <div class="refno" id="sumRef">—</div>
+          <div class="rcpt" id="sumWhen"></div>
+        </div>
+        <span class="pill pill-now" id="sumStatus">Pending approval</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-hd">
+        <div class="eyebrow">Progress</div>
+        <h2>Where it sits</h2>
+        <p class="hint" id="sumNext"></p>
+      </div>
+      <div class="panel-bd">
+        <div id="sumRoute"></div>
+        <div class="demo-note">
+          <div class="eyebrow">Prototype</div>
+          <p style="margin-bottom:10px">Nothing was emailed and nothing was saved. Move the claim along to see how this screen behaves.</p>
+          <div style="display:flex;gap:9px;flex-wrap:wrap">
+            <button type="button" class="btn btn-ms" style="width:auto;padding:7px 14px;font-size:13px" onclick="demoAdvance()">Approve next stage</button>
+            <button type="button" class="btn btn-ms" style="width:auto;padding:7px 14px;font-size:13px" onclick="demoReject()">Reject</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-hd">
+        <div class="eyebrow">Summary</div>
+        <h2>Claim details</h2>
+      </div>
+      <div class="panel-bd"><dl class="kv" id="sumMeta"></dl></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-hd">
+        <div class="eyebrow">Expenses</div>
+        <h2>What you claimed</h2>
+      </div>
+      <div class="panel-bd" style="overflow-x:auto"><table class="sumtable" id="sumLines"></table></div>
+    </section>
+
+    <details class="panel">
+      <summary class="dsum">Developer view — the payload this form would POST</summary>
+      <pre id="payloadOut" style="margin:0;padding:0 20px 18px;font-family:var(--mono);font-size:11.5px;line-height:1.65;color:var(--ink-2);overflow-x:auto;white-space:pre-wrap;word-break:break-word"></pre>
+    </details>
+
+    <button type="button" class="btn btn-ghost" onclick="newClaim()">File another claim</button>
+  </div>
+</div>
+
+<script>
+/* --------------------------------------------------------------------------
+   DEMO GATE. Delete this whole block when wiring up Entra ID.
+   These values are visible to anyone who opens devtools. That is the point —
+   they are throwaway prototype credentials, not a secret.
+   -------------------------------------------------------------------------- */
+const DEMO_USER = "prasad.msp@way.com";
+const DEMO_PASS = "WayDemo#2026";
+
+const SCREENS = ["screenSignIn","screenClaim","screenSummary"];
+function showScreen(id){
+  SCREENS.forEach(s => { document.getElementById(s).hidden = (s !== id); });
+  window.scrollTo(0,0);
+}
+
+function togglePw(){
+  const f = document.getElementById("password");
+  const b = document.getElementById("pwToggle");
+  const show = f.type === "password";
+  f.type = show ? "text" : "password";
+  b.textContent = show ? "Hide" : "Show";
+  b.setAttribute("aria-label", show ? "Hide password" : "Show password");
+}
+
+function signIn(){
+  const mail = document.getElementById("email").value.trim().toLowerCase();
+  const pass = document.getElementById("password").value;
+  const box  = document.getElementById("signInError");
+
+  if(!mail || !pass){
+    box.innerHTML = '<div class="flag flag-err"><span class="flag-mark">!</span><span>Enter both your email address and password.</span></div>';
+    return;
+  }
+  if(mail !== DEMO_USER || pass !== DEMO_PASS){
+    box.innerHTML = '<div class="flag flag-err"><span class="flag-mark">!</span><span>That email address and password don\'t match. Check the prototype credentials below.</span></div>';
+    return;
+  }
+
+  box.innerHTML = "";
+  showScreen("screenClaim");
+  if(!lines.length) addLine();
+  renderStats();
+}
+
+function ssoStub(){
+  document.getElementById("signInError").innerHTML =
+    '<div class="flag flag-warn"><span class="flag-mark">~</span><span>Not wired up yet. This button is where MSAL.js redirects to Entra ID in the real build — no password is handled by this page at all.</span></div>';
+}
+
+function signOut(){
+  document.getElementById("password").value = "";
+  document.getElementById("signInError").innerHTML = "";
+  showScreen("screenSignIn");
+}
+
+/* ----------------------------- Claim form ----------------------------- */
+const CONFIG = {
+  financeApprovalAbove: 25000,
+  directorApprovalAbove: 100000,
+  backdatedDaysLimit: 90,
+  maxReceiptMb: 10,
+  categories: ["Travel — air or rail","Travel — local or taxi","Accommodation","Meals","Client entertainment","Office supplies","Software or subscriptions","Training and conferences","Other"]
+};
+const SYM = {INR:"₹",USD:"$",GBP:"£",EUR:"€"};
+
+let seq = 0;
+const lines = [];
+
+function money(n){
+  const s = SYM[document.getElementById("currency").value] || "";
+  return s + n.toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+const FINANCE_CC = "Finance@way.com";
+const MAIL_RE = /^[^\s@,]+@[^\s@,]+\.[^\s@,]+$/;
+
+function parseAddrs(v){
+  return v.split(/[,;]/).map(x => x.trim()).filter(Boolean);
+}
+function badAddrs(list){
+  return list.filter(a => !MAIL_RE.test(a));
+}
+
+function esc(v){ return String(v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function today(){ return new Date().toISOString().slice(0,10); }
+
+function addLine(){
+  const id = ++seq;
+  lines.push(id);
+  const el = document.createElement("div");
+  el.className = "line";
+  el.id = "line-" + id;
+  el.innerHTML =
+    '<div class="line-hd">' +
+      '<span class="line-no">Line ' + String(lines.length).padStart(2,"0") + '</span>' +
+      '<button type="button" class="btn-remove" onclick="removeLine(' + id + ')">Remove</button>' +
+    '</div>' +
+    '<div class="line-grid">' +
+      '<div class="field"><label for="d'+id+'">Date <span class="req">*</span></label>' +
+        '<input type="date" id="d'+id+'" max="'+today()+'" oninput="recalc()"></div>' +
+      '<div class="field"><label for="c'+id+'">Category <span class="req">*</span></label>' +
+        '<select id="c'+id+'" onchange="recalc()"><option value="">Choose one</option>' +
+        CONFIG.categories.map(c => '<option>'+c+'</option>').join("") + '</select></div>' +
+      '<div class="field"><label for="a'+id+'">Amount <span class="req">*</span></label>' +
+        '<input type="number" id="a'+id+'" min="0" step="0.01" placeholder="0.00" oninput="recalc()"></div>' +
+      '<div class="field line-wide"><label for="n'+id+'">Description <span class="req">*</span></label>' +
+        '<input type="text" id="n'+id+'" placeholder="Merchant and what was bought" oninput="recalc()"></div>' +
+      '<div class="field line-wide"><label for="f'+id+'">Receipt <span class="req">*</span></label>' +
+        '<div class="drop"><input type="file" id="f'+id+'" accept="image/jpeg,image/png,image/heic,application/pdf" onchange="recalc()">' +
+        '<div class="file-note">JPG, PNG, HEIC or PDF · ' + CONFIG.maxReceiptMb + ' MB max</div></div>' +
+        '<div id="flags'+id+'"></div></div>' +
+    '</div>';
+  document.getElementById("lines").appendChild(el);
+  recalc();
+}
+
+function removeLine(id){
+  if(lines.length === 1) return;
+  const i = lines.indexOf(id);
+  if(i > -1) lines.splice(i,1);
+  document.getElementById("line-"+id).remove();
+  renumber();
+  recalc();
+}
+
+function renumber(){
+  lines.forEach((id,i) => {
+    document.querySelector("#line-"+id+" .line-no").textContent = "Line " + String(i+1).padStart(2,"0");
+  });
+}
+
+function readLine(id){
+  const amt = parseFloat(document.getElementById("a"+id).value);
+  const file = document.getElementById("f"+id).files[0];
+  return {
+    id: id,
+    date: document.getElementById("d"+id).value,
+    category: document.getElementById("c"+id).value,
+    description: document.getElementById("n"+id).value.trim(),
+    amount: isNaN(amt) ? 0 : amt,
+    hasReceipt: !!file,
+    fileName: file ? file.name : null,
+    fileSize: file ? file.size : 0
+  };
+}
+
+function recalc(){
+  const data = lines.map(readLine);
+  const total = data.reduce((s,l) => s + l.amount, 0);
+  const blockers = [];
+
+  document.getElementById("total").textContent = money(total);
+  document.getElementById("lineCount").textContent = lines.length + (lines.length === 1 ? " line" : " lines");
+
+  data.forEach(l => {
+    const box = document.getElementById("flags"+l.id);
+    const f = [];
+    if(l.amount > 0 && !l.hasReceipt){
+      f.push('<div class="flag flag-err"><span class="flag-mark">!</span><span>Attach the receipt for this line. Every line needs one.</span></div>');
+      blockers.push("Line " + (lines.indexOf(l.id)+1) + " needs a receipt");
+    }
+    if(l.fileSize > CONFIG.maxReceiptMb * 1024 * 1024){
+      f.push('<div class="flag flag-err"><span class="flag-mark">!</span><span>That file is over ' + CONFIG.maxReceiptMb + ' MB. Compress it or photograph the receipt instead.</span></div>');
+      blockers.push("Line " + (lines.indexOf(l.id)+1) + " receipt is too large");
+    }
+    if(l.date){
+      const age = Math.floor((Date.now() - new Date(l.date).getTime()) / 86400000);
+      if(age > CONFIG.backdatedDaysLimit){
+        f.push('<div class="flag flag-warn"><span class="flag-mark">~</span><span>This is ' + age + ' days old. Claims past ' + CONFIG.backdatedDaysLimit + ' days need finance to approve the exception.</span></div>');
+      }
+    }
+    box.innerHTML = f.join("");
+  });
+
+  const byCat = {};
+  data.forEach(l => { if(l.category && l.amount > 0) byCat[l.category] = (byCat[l.category] || 0) + l.amount; });
+  const bd = document.getElementById("breakdown");
+  const keys = Object.keys(byCat);
+  bd.innerHTML = keys.length
+    ? keys.map(k => '<div class="brow"><span>' + esc(k) + '</span><span>' + money(byCat[k]) + '</span></div>').join("")
+    : '<div class="brow-empty">Categories appear here as you fill in lines.</div>';
+
+  const stale = data.some(l => l.date && Math.floor((Date.now() - new Date(l.date).getTime())/86400000) > CONFIG.backdatedDaysLimit);
+  const needsFinance = total > CONFIG.financeApprovalAbove || stale;
+  const needsDirector = total > CONFIG.directorApprovalAbove;
+
+  const stops = [
+    {on:true, t:"You submit", s:"Locked once sent", n:false},
+    {on:true, t:(parseAddrs(document.getElementById("mailTo").value)[0] || "Your approver"), s:"From the To field above", n:false},
+    {on:needsFinance, t:"Finance review", s: stale ? "Triggered by a backdated line" : "Triggered above " + money(CONFIG.financeApprovalAbove), n:needsFinance},
+    {on:needsDirector, t:"Engineering director", s:"Triggered above " + money(CONFIG.directorApprovalAbove), n:needsDirector},
+    {on:true, t:"Payroll", s:"Paid with the next run", n:false}
+  ];
+
+  document.getElementById("routeStops").innerHTML = stops.map((s,i) => {
+    const cls = s.on ? (s.n ? "pip pip-new" : "pip pip-on") : "pip";
+    return '<div class="stop' + (s.on ? "" : " stop-off") + '">' +
+      '<div class="' + cls + '">' + (i+1) + '</div>' +
+      '<div><div class="stop-t">' + esc(s.t) + (s.n ? '<span class="badge">added</span>' : '') +
+      '</div><div class="stop-s">' + esc(s.s) + '</div></div></div>';
+  }).join("");
+
+  const who   = document.getElementById("empName").value;
+  const claim = document.getElementById("title").value.trim();
+  const head  = document.getElementById("expenseHead").value;
+  document.getElementById("mailSubject").value =
+    "Reimbursement approval · " + who + " · " + money(total) + (head ? " · " + head : "");
+
+  const me   = (document.getElementById("whoMail").textContent || "").trim().toLowerCase();
+  const to   = parseAddrs(document.getElementById("mailTo").value);
+  const cc   = parseAddrs(document.getElementById("mailCc").value);
+  const tf   = [];
+
+  if(!to.length){
+    blockers.push("Enter an approver in the To field");
+  } else if(badAddrs(to).length){
+    tf.push('<div class="flag flag-err"><span class="flag-mark">!</span><span>Not a valid address: ' + esc(badAddrs(to).join(", ")) + '</span></div>');
+    blockers.push("Fix the approver address");
+  } else if(to.some(a => a.toLowerCase() === me)){
+    tf.push('<div class="flag flag-err"><span class="flag-mark">!</span><span>You can\'t send a claim to yourself for approval. Enter your manager\'s address.</span></div>');
+    blockers.push("Approver can't be you");
+  }
+  document.getElementById("toFlags").innerHTML = tf.join("");
+
+  const cf = [];
+  if(badAddrs(cc).length){
+    cf.push('<div class="flag flag-err"><span class="flag-mark">!</span><span>Not a valid address: ' + esc(badAddrs(cc).join(", ")) + '. Separate addresses with commas.</span></div>');
+    blockers.push("Fix the copy addresses");
+  }
+  if(!cc.some(a => a.toLowerCase() === FINANCE_CC.toLowerCase())){
+    cf.push('<div class="flag flag-warn"><span class="flag-mark">~</span><span>' + FINANCE_CC + ' has been removed. Finance is normally copied on every claim — expect this one to take longer.</span></div>');
+  }
+  document.getElementById("ccFlags").innerHTML = cf.join("");
+
+  if(!document.getElementById("empId").value.trim()) blockers.push("Enter your employee number");
+  if(!head) blockers.push("Choose a head of expenses");
+  if(!claim) blockers.push("Add a claim title");
+  if(!document.getElementById("reason").value.trim()) blockers.push("Add a business justification");
+  if(total <= 0) blockers.push("Enter an amount on at least one line");
+  data.forEach((l,i) => {
+    if(l.amount > 0 && (!l.date || !l.category || !l.description)) blockers.push("Line " + (i+1) + " is incomplete");
+  });
+  if(!document.getElementById("declare").checked) blockers.push("Tick the declaration");
+
+  const seen = [...new Set(blockers)];
+  document.getElementById("blockers").innerHTML = seen.map(b => "<li>" + esc(b) + "</li>").join("");
+  document.getElementById("submitBtn").disabled = seen.length > 0;
+}
+
+function submitClaim(){
+  const data = lines.map(readLine);
+  const total = data.reduce((s,l) => s + l.amount, 0);
+  const stale = data.some(l => l.date && Math.floor((Date.now()-new Date(l.date).getTime())/86400000) > CONFIG.backdatedDaysLimit);
+
+  const payload = {
+    employeeNumber: document.getElementById("empId").value.trim(),
+    expenseHead: document.getElementById("expenseHead").value,
+    claimTitle: document.getElementById("title").value.trim(),
+    justification: document.getElementById("reason").value.trim(),
+    currency: document.getElementById("currency").value,
+    recipients: {
+      to: parseAddrs(document.getElementById("mailTo").value),
+      cc: parseAddrs(document.getElementById("mailCc").value),
+      subject: document.getElementById("mailSubject").value,
+      note: "Client-supplied. The server must check the approver exists in the directory, is not the claimant, and re-append the finance copy."
+    },
+    totalAmount: Number(total.toFixed(2)),
+    declarationAccepted: true,
+    submittedAtUtc: new Date().toISOString(),
+    routeHint: {
+      financeReviewExpected: total > CONFIG.financeApprovalAbove || stale,
+      directorReviewExpected: total > CONFIG.directorApprovalAbove,
+      note: "Advisory only. The server recalculates routing from policy."
+    },
+    lines: data.map(l => ({
+      expenseDate: l.date, category: l.category, description: l.description,
+      amount: Number(l.amount.toFixed(2)), receiptFileName: l.fileName
+    }))
+  };
+
+  claim = payload;
+  claim.reference = editingRef || makeRef();
+  stage = 1;
+  rejected = false;
+
+  const row = {
+    ref: claim.reference,
+    date: claim.submittedAtUtc.slice(0,10),
+    head: claim.expenseHead,
+    title: claim.claimTitle,
+    amount: claim.totalAmount,
+    status: "submitted",
+    justification: claim.justification,
+    to: claim.recipients.to.join(", "),
+    cc: claim.recipients.cc.join(", "),
+    lines: claim.lines
+  };
+  const at = history.findIndex(h => h.ref === claim.reference);
+  if(at > -1) history[at] = row; else history.push(row);
+
+  if(editingRef){
+    editingRef = null;
+    document.getElementById("editBanner").hidden = true;
+    document.getElementById("submitBtn").textContent = "Send for approval";
+  }
+
+  document.getElementById("payloadOut").textContent = JSON.stringify(payload, null, 2);
+  renderSummary();
+  showScreen("screenSummary");
+}
+
+/* -------------------- Claim history (demo seed) --------------------- */
+const STATUS = {
+  submitted:{label:"Submitted", pill:"pill-now",  dot:"#BA7517"},
+  approved: {label:"Approved",  pill:"pill-done", dot:"#1D9E75"},
+  rejected: {label:"Rejected",  pill:"pill-stop", dot:"#A32D2D"},
+  payroll:  {label:"In payroll",pill:"pill-wait", dot:"#7F77DD"},
+  paid:     {label:"Paid",      pill:"pill-done", dot:"#17564A"}
+};
+const ORDER = ["submitted","approved","rejected","payroll","paid"];
+
+const history = [
+  {ref:"RE-2607-8842", date:"2026-07-28", head:"Travel expenses",                title:"Client visit — Hyderabad",   amount:8450,  status:"paid"},
+  {ref:"RE-2607-5119", date:"2026-07-22", head:"Staff welfare",                  title:"Team lunch — sprint close",  amount:6200,  status:"paid"},
+  {ref:"RE-2607-2077", date:"2026-07-09", head:"Telephone and internet charges", title:"Broadband — July",           amount:2360,  status:"paid"},
+  {ref:"RE-2608-4410", date:"2026-08-02", head:"Office expenses",                title:"Monitor stand and cables",   amount:4780,  status:"payroll"},
+  {ref:"RE-2608-6631", date:"2026-08-04", head:"Travel expenses",                title:"Airport transfers — Chennai",amount:3120,  status:"approved"},
+  {ref:"RE-2608-7302", date:"2026-08-06", head:"Other expenses",                 title:"Visa processing fee",        amount:9500,  status:"submitted"},
+  {ref:"RE-2607-9958", date:"2026-07-31", head:"Staff welfare",                  title:"Offsite — no receipt",       amount:1900,  status:"rejected",
+   justification:"Team offsite refreshments. Original receipt was lost in transit.",
+   lines:[{expenseDate:"2026-07-30", category:"Meals", description:"Refreshments — offsite", amount:1900, receiptFileName:null}]}
+];
+
+let listFilter = null;
+
+function inr(n){ return "₹" + n.toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+function renderStats(){
+  const html = ORDER.map(k => {
+    const rows = history.filter(h => h.status === k);
+    const sum  = rows.reduce((a,b) => a + b.amount, 0);
+    return '<button type="button" class="stat" aria-pressed="' + (listFilter === k) + '" onclick="filterList(\'' + k + '\')">' +
+      '<span class="stat-l"><i style="background:' + STATUS[k].dot + '"></i>' + STATUS[k].label + '</span>' +
+      '<div class="stat-n">' + rows.length + '</div>' +
+      '<div class="stat-v">' + inr(sum) + '</div></button>';
+  }).join("");
+  document.querySelectorAll(".statsHost").forEach(n => n.innerHTML = html);
+  renderList();
+}
+
+function renderList(){
+  const rows = [...history]
+    .filter(h => !listFilter || h.status === listFilter)
+    .sort((a,b) => b.date.localeCompare(a.date));
+
+  const head = '<thead><tr><th>Reference</th><th>Submitted</th><th>Head</th><th>Title</th>' +
+               '<th class="num">Amount</th><th>Status</th><th>Actions</th></tr></thead>';
+  const body = rows.length
+    ? rows.map(h =>
+        '<tr><td class="num" style="text-align:left">' + esc(h.ref) + '</td>' +
+        '<td class="num" style="text-align:left">' + esc(fmtDate(h.date)) + '</td>' +
+        '<td>' + esc(h.head) + '</td><td>' + esc(h.title) + '</td>' +
+        '<td class="num">' + inr(h.amount) + '</td>' +
+        '<td><span class="pill ' + STATUS[h.status].pill + '">' + STATUS[h.status].label + '</span></td>' +
+        '<td class="acts">' + actionsFor(h) + '</td></tr>').join("")
+    : '<tr><td colspan="7" style="color:var(--ink-3)">Nothing in this status yet.</td></tr>';
+
+  const cap = listFilter
+    ? 'Showing ' + STATUS[listFilter].label.toLowerCase() + ' · <button type="button" class="btn-remove" onclick="filterList(null)">show all</button>'
+    : 'All claims';
+
+  document.querySelectorAll(".listHost").forEach(d => {
+    d.querySelector(".listTable").innerHTML = head + "<tbody>" + body + "</tbody>";
+    d.querySelector(".dsum").innerHTML = "My reimbursement claims &nbsp;<span style=\"color:var(--ink-3);font-weight:400;font-size:12.5px\">" + cap + "</span>";
+  });
+}
+
+/* Only an unapproved claim may be changed. Once an approver has signed off,
+   editing it would invalidate that approval, and deleting it would destroy
+   the audit record. Those rows are read-only by design. */
+const OPEN_STATES = ["submitted","rejected"];
+let pendingDelete = null, editingRef = null;
+
+function actionsFor(h){
+  if(OPEN_STATES.indexOf(h.status) === -1){
+    return '<span class="locknote" title="Approved claims can\'t be changed. Raise a query with finance instead.">Locked</span>';
+  }
+  if(pendingDelete === h.ref){
+    const verb = h.status === "submitted" ? "Withdraw" : "Delete";
+    return '<span class="confirm">' + verb + '?</span> ' +
+      '<button type="button" class="lnk lnk-danger" onclick="confirmDelete(\'' + h.ref + '\')">Yes</button>' +
+      '<button type="button" class="lnk" onclick="askDelete(null)">Cancel</button>';
+  }
+  return '<button type="button" class="lnk" onclick="editClaim(\'' + h.ref + '\')">Edit</button>' +
+    '<button type="button" class="lnk lnk-danger" onclick="askDelete(\'' + h.ref + '\')">' +
+    (h.status === "submitted" ? "Withdraw" : "Delete") + '</button>';
+}
+
+function askDelete(ref){ pendingDelete = ref; renderList(); }
+
+function confirmDelete(ref){
+  const i = history.findIndex(h => h.ref === ref);
+  if(i > -1 && OPEN_STATES.indexOf(history[i].status) > -1) history.splice(i,1);
+  pendingDelete = null;
+  if(editingRef === ref) cancelEdit();
+  renderStats();
+}
+
+function editClaim(ref){
+  const row = history.find(h => h.ref === ref);
+  if(!row || OPEN_STATES.indexOf(row.status) === -1) return;
+
+  editingRef = ref;
+  pendingDelete = null;
+  document.getElementById("expenseHead").value = row.head || "";
+  document.getElementById("title").value = row.title || "";
+  document.getElementById("reason").value = row.justification || "";
+  if(row.to) document.getElementById("mailTo").value = row.to;
+  if(row.cc) document.getElementById("mailCc").value = row.cc;
+  document.getElementById("declare").checked = false;
+
+  document.getElementById("lines").innerHTML = "";
+  lines.length = 0;
+  const src = (row.lines && row.lines.length)
+    ? row.lines
+    : [{expenseDate:row.date, category:"Other", description:row.title, amount:row.amount}];
+  src.forEach(l => {
+    addLine();
+    const id = lines[lines.length - 1];
+    document.getElementById("d"+id).value = l.expenseDate || "";
+    document.getElementById("c"+id).value = l.category || "";
+    document.getElementById("n"+id).value = l.description || "";
+    document.getElementById("a"+id).value = l.amount || "";
+  });
+
+  const b = document.getElementById("editBanner");
+  b.hidden = false;
+  b.innerHTML = '<div class="flag flag-warn" style="margin:0 0 20px"><span class="flag-mark">~</span><span>' +
+    'Editing <strong>' + esc(ref) + '</strong>. Receipts can\'t be carried across by the browser, so re-attach one to each line. ' +
+    '<button type="button" class="lnk" onclick="cancelEdit()">Cancel and start a new claim</button></span></div>';
+  document.getElementById("submitBtn").textContent = "Resubmit claim";
+
+  showScreen("screenClaim");
+  recalc();
+  renderStats();
+}
+
+function cancelEdit(){
+  editingRef = null;
+  document.getElementById("editBanner").hidden = true;
+  document.getElementById("submitBtn").textContent = "Send for approval";
+  newClaim();
+}
+
+function filterList(k){
+  listFilter = (k && listFilter === k) ? null : k;
+  document.querySelectorAll(".listHost").forEach(d => { if(listFilter) d.open = true; });
+  renderStats();
+}
+
+/* ----------------------------- Screen 3 ----------------------------- */
+let claim = null, stage = 1, rejected = false;
+
+function makeRef(){
+  const d = new Date();
+  const ym = String(d.getFullYear()).slice(2) + String(d.getMonth()+1).padStart(2,"0");
+  return "RE-" + ym + "-" + String(Math.floor(Math.random()*9000)+1000);
+}
+
+function fmtDate(iso){
+  if(!iso) return "—";
+  return new Date(iso).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});
+}
+
+function stages(){
+  const r = claim.routeHint;
+  const list = [
+    {t:"Submitted", s:"By " + document.getElementById("empName").value},
+    {t:"Manager approval", s:claim.recipients.to.join(", ")}
+  ];
+  if(r.financeReviewExpected) list.push({t:"Finance review", s:"Finance@way.com"});
+  if(r.directorReviewExpected) list.push({t:"Director approval", s:"Engineering director"});
+  list.push({t:"Payroll", s:"Included in the next payroll run"});
+  list.push({t:"Paid", s:"Credited to your account"});
+  return list;
+}
+
+function renderSummary(){
+  const st = stages();
+  const payIdx = st.length - 2;
+
+  document.getElementById("sumRef").textContent = claim.reference;
+  document.getElementById("sumWhen").textContent = "Submitted " +
+    new Date(claim.submittedAtUtc).toLocaleString("en-GB",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
+
+  const pill = document.getElementById("sumStatus");
+  const next = document.getElementById("sumNext");
+  if(rejected){
+    pill.className = "pill pill-stop"; pill.textContent = "Rejected";
+    next.textContent = "Sent back to you. Fix what was queried and file it again.";
+  } else if(stage < payIdx){
+    pill.className = "pill pill-now"; pill.textContent = "Pending approval";
+    next.textContent = "Waiting on " + st[stage].s + ".";
+  } else if(stage === payIdx){
+    pill.className = "pill pill-done"; pill.textContent = "Approved";
+    next.textContent = "Fully approved. Waiting to be picked up by payroll.";
+  } else if(stage === payIdx + 1){
+    pill.className = "pill pill-wait"; pill.textContent = "In payroll";
+    next.textContent = "In the current payroll run.";
+  } else {
+    pill.className = "pill pill-done"; pill.textContent = "Paid";
+    next.textContent = "Credited to your account.";
+  }
+  syncHistory(payIdx);
+
+  document.getElementById("sumRoute").innerHTML = st.map((x,i) => {
+    let cls = "pip", tag = '<span class="pill pill-wait">Not started</span>';
+    if(rejected && i === stage){ cls = "pip pip-stop"; tag = '<span class="pill pill-stop">Rejected</span>'; }
+    else if(rejected && i > stage){ cls = "pip"; tag = '<span class="pill pill-wait">Halted</span>'; }
+    else if(i < stage){ cls = "pip pip-done"; tag = '<span class="pill pill-done">Done</span>'; }
+    else if(i === stage){ cls = "pip pip-new"; tag = '<span class="pill pill-now">Pending</span>'; }
+    return '<div class="stop">' +
+      '<div class="' + cls + '">' + (i < stage && !rejected ? "✓" : (i+1)) + '</div>' +
+      '<div><div style="display:flex;gap:10px;justify-content:space-between;align-items:baseline;flex-wrap:wrap">' +
+        '<span class="stop-t">' + esc(x.t) + '</span>' + tag + '</div>' +
+      '<div class="stop-s">' + esc(x.s) + '</div></div></div>';
+  }).join("");
+
+  const cur = SYM[claim.currency] || "";
+  const meta = [
+    ["Employee number", claim.employeeNumber],
+    ["Head of expenses", claim.expenseHead],
+    ["Claim title", claim.claimTitle],
+    ["Business justification", claim.justification],
+    ["Approver", claim.recipients.to.join(", ")],
+    ["Copied to", claim.recipients.cc.join(", ") || "—"],
+    ["Subject", claim.recipients.subject]
+  ];
+  document.getElementById("sumMeta").innerHTML =
+    meta.map(([k,v]) => "<dt>" + esc(k) + "</dt><dd>" + esc(v || "—") + "</dd>").join("");
+
+  document.getElementById("sumLines").innerHTML =
+    "<thead><tr><th>Date</th><th>Category</th><th>Description</th><th class=\"num\">Amount</th></tr></thead><tbody>" +
+    claim.lines.map(l =>
+      "<tr><td class=\"num\" style=\"text-align:left\">" + esc(fmtDate(l.expenseDate)) + "</td>" +
+      "<td>" + esc(l.category) + "</td>" +
+      "<td>" + esc(l.description) +
+        (l.receiptFileName ? '<div class="rcpt">' + esc(l.receiptFileName) + "</div>" : '<div class="rcpt">No receipt</div>') + "</td>" +
+      "<td class=\"num\">" + cur + l.amount.toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2}) + "</td></tr>"
+    ).join("") +
+    "</tbody><tfoot><tr><td colspan=\"3\">Total claimed</td><td class=\"num\">" +
+    cur + claim.totalAmount.toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2}) +
+    "</td></tr></tfoot>";
+}
+
+function syncHistory(payIdx){
+  const row = history.find(h => h.ref === claim.reference);
+  if(!row) return;
+  row.status = rejected ? "rejected"
+             : stage <  payIdx     ? "submitted"
+             : stage === payIdx     ? "approved"
+             : stage === payIdx + 1 ? "payroll"
+             : "paid";
+  renderStats();
+}
+
+function demoAdvance(){
+  if(rejected) return;
+  stage = Math.min(stage + 1, stages().length - 1);
+  renderSummary();
+}
+
+function demoReject(){
+  if(stage >= stages().length - 2) return;
+  rejected = true;
+  renderSummary();
+}
+
+function newClaim(){
+  editingRef = null;
+  document.getElementById("editBanner").hidden = true;
+  document.getElementById("submitBtn").textContent = "Send for approval";
+  ["title","reason","mailCcExtra"].forEach(id => { const e = document.getElementById(id); if(e) e.value = ""; });
+  document.getElementById("expenseHead").value = "";
+  document.getElementById("declare").checked = false;
+  document.getElementById("lines").innerHTML = "";
+  lines.length = 0;
+  addLine();
+  showScreen("screenClaim");
+}
+</script>
+
+<!--
+  ============================================================================
+  REPLACING THE DEMO GATE
+
+  1. Register an app in Entra ID. Single-page application platform, redirect
+     URI set to wherever this is hosted. No client secret — an SPA cannot
+     keep one.
+  2. Use MSAL.js with the authorization code flow plus PKCE.
+  3. On load, acquire a token silently. If that fails, redirect to sign in.
+  4. Read name, employee ID, cost centre and manager from Microsoft Graph
+     (/me and /me/manager) on the SERVER, using the access token. Do not let
+     the browser tell the backend who the user is.
+  5. Send the access token as a bearer header on submit. The API validates
+     issuer, audience, signature and expiry on every request.
+  6. Delete DEMO_USER, DEMO_PASS, signIn() and ssoStub() entirely.
+
+  Everything the browser enforces here — receipt rules, thresholds, the
+  declaration, routing — is a convenience for the user. All of it has to be
+  re-checked server-side, because none of it is trustworthy.
+  ============================================================================
+-->
+</body>
+</html>
